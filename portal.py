@@ -38,7 +38,7 @@ if st.button("Submit Candidate"):
             personal_excel.getvalue()
         )
 
-    supabase.table("candidates").insert({
+    supabase.table("Candidates").insert({
         "name": name,
         "dob": dob,
         "role": role,

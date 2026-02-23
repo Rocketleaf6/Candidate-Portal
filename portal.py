@@ -26,14 +26,14 @@ if st.button("Submit Candidate"):
 
     if cv:
         cv_path = f"resumes/{cv.name}"
-        supabase.storage.from_("Candidates Files").upload(
+        supabase.storage.from_("Candidates Candidates Files").upload(
             cv_path,
             cv.getvalue()
         )
 
     if personal_excel:
         excel_path = f"personal_excel/{personal_excel.name}"
-        supabase.storage.from_("files").upload(
+        supabase.storage.from_("Candidates Files").upload(
             excel_path,
             personal_excel.getvalue()
         )

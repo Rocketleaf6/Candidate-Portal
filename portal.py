@@ -24,7 +24,26 @@ with tab1:
     # Load roles dynamically from Role Master table.
     roles_response = supabase.table("roles").select("*").execute()
     roles_data = roles_response.data or []
-    role_options = [r.get("role_name", "") for r in roles_data if r.get("role_name")]
+    role_names = ["Select Role"] + [r["role_name"] for r in roles_data if r.get("role_name")]
+    selected_role = st.selectbox(
+        "Role",
+        role_names,
+        index=0
+    )
+
+    selected_role_description = ""
+    if selected_role != "Select Role":
+        selected_role_description = next(
+            r.get("role_description", "")
+            for r in roles_data
+            if r.get("role_name") == selected_role
+        )
+
+    st.text_area(
+        "Role Description",
+        value=selected_role_description,
+        disabled=True
+    )
 
     # ============================================
     # FORM INPUT
@@ -32,17 +51,6 @@ with tab1:
 
     name = st.text_input("Candidate Name")
     dob = st.text_input("DOB (DD/MM/YYYY)")
-
-    if role_options:
-        role = st.selectbox("Role", role_options)
-        selected_role = next((r for r in roles_data if r.get("role_name") == role), {})
-        default_desc = selected_role.get("role_description", "") or ""
-    else:
-        st.warning("No roles found. Add roles in Role Master tab.")
-        role = st.text_input("Role")
-        default_desc = ""
-
-    role_desc = st.text_area("Role Description", value=default_desc)
 
     cv = st.file_uploader("Upload CV", type=["pdf", "docx"], key="cv_upload")
     personal_excel = st.file_uploader(
@@ -56,6 +64,10 @@ with tab1:
     # ============================================
 
     if st.button("Submit Candidate", key="submit_candidate"):
+        if selected_role == "Select Role":
+            st.error("Please select role")
+            st.stop()
+
         cv_path = ""
         excel_path = ""
 
@@ -74,9 +86,6 @@ with tab1:
                 excel_path,
                 personal_excel.getvalue()
             )
-
-        selected_role = role
-        selected_role_description = role_desc
 
         # Run numerology scoring before insert.
         birth, destiny, month = calculate_numbers_from_dob(dob)
@@ -126,13 +135,60 @@ with tab1:
     if not rows:
         st.info("No uploaded candidates yet.")
     else:
-        for cand in rows:
-            c1, c2, c3, c4, c5 = st.columns([2, 2, 1, 1, 2])
-            c1.write(cand.get("name", ""))
-            c2.write(cand.get("role", ""))
-            c3.write(cand.get("score", ""))
-            c4.write(cand.get("verdict", ""))
-            c5.write(cand.get("stage", "Review Pending"))
+        if "pending_delete_id" not in st.session_state:
+            st.session_state["pending_delete_id"] = None
+
+        for candidate in rows:
+            col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 1, 1, 1, 1])
+
+            with col1:
+                st.write(candidate.get("name", ""))
+            with col2:
+                st.write(candidate.get("role", ""))
+            with col3:
+                st.write(candidate.get("score"))
+            with col4:
+                st.write(candidate.get("verdict"))
+            with col5:
+                st.write(candidate.get("stage", "Review Pending"))
+            with col6:
+                candidate_id = candidate.get("id")
+                if candidate_id is not None and st.button("Delete", key=f"delete_{candidate_id}"):
+                    st.session_state["pending_delete_id"] = candidate_id
+
+        pending_delete_id = st.session_state.get("pending_delete_id")
+        if pending_delete_id is not None:
+            pending_candidate = next((c for c in rows if c.get("id") == pending_delete_id), None)
+            if pending_candidate:
+                st.warning(
+                    f"Confirm delete {pending_candidate.get('name', 'candidate')}?",
+                    icon="⚠️"
+                )
+                confirm_col, cancel_col = st.columns([1, 1])
+                if confirm_col.button("Confirm Delete", key=f"confirm_{pending_delete_id}"):
+                    try:
+                        if pending_candidate.get("cv_url"):
+                            supabase.storage.from_("Candidates Files").remove(
+                                [pending_candidate["cv_url"]]
+                            )
+                        if pending_candidate.get("personal_excel_url"):
+                            supabase.storage.from_("Candidates Files").remove(
+                                [pending_candidate["personal_excel_url"]]
+                            )
+                    except Exception:
+                        pass
+
+                    supabase.table("Candidates").delete().eq(
+                        "id",
+                        pending_delete_id
+                    ).execute()
+                    st.session_state["pending_delete_id"] = None
+                    st.success("Candidate deleted")
+                    st.rerun()
+
+                if cancel_col.button("Cancel", key=f"cancel_{pending_delete_id}"):
+                    st.session_state["pending_delete_id"] = None
+                    st.rerun()
 
 with tab2:
     st.subheader("Create New Role")
@@ -152,5 +208,23 @@ with tab2:
 
     st.subheader("Existing Roles")
     roles = supabase.table("roles").select("*").execute()
-    for r in roles.data or []:
-        st.write(f"• {r['role_name']}")
+    for role in roles.data or []:
+        role_id = role["id"]
+        new_name = st.text_input(
+            f"Role Name {role_id}",
+            value=role.get("role_name", ""),
+            key=f"name_{role_id}"
+        )
+
+        new_description = st.text_area(
+            f"Role Description {role_id}",
+            value=role.get("role_description", ""),
+            key=f"desc_{role_id}"
+        )
+
+        if st.button(f"Update Role {role_id}", key=f"update_role_{role_id}"):
+            supabase.table("roles").update({
+                "role_name": new_name,
+                "role_description": new_description
+            }).eq("id", role_id).execute()
+            st.success("Role updated")

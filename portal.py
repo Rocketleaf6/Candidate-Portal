@@ -1,6 +1,7 @@
 import streamlit as st
 from supabase import create_client
 import time
+import re
 from scoring_engine import (
     calculate_numbers_from_dob,
     evaluate_candidate_for_role,
@@ -74,7 +75,8 @@ with tab1:
 
         # Upload CV
         if cv:
-            cv_path = f"resumes/{int(time.time())}_{cv.name}"
+            safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', cv.name)
+            cv_path = f"resumes/{int(time.time())}_{safe_name}"
             supabase.storage.from_("candidates-files").upload(
                 cv_path,
                 cv.getvalue()
@@ -82,7 +84,8 @@ with tab1:
 
         # Upload Excel
         if personal_excel:
-            excel_path = f"excel/{int(time.time())}_{personal_excel.name}"
+            safe_excel_name = re.sub(r'[^a-zA-Z0-9._-]', '_', personal_excel.name)
+            excel_path = f"excel/{int(time.time())}_{safe_excel_name}"
             supabase.storage.from_("candidates-files").upload(
                 excel_path,
                 personal_excel.getvalue()

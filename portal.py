@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client
 import time
 import re
+import pandas as pd
 from scoring_engine import (
     calculate_numbers_from_dob,
     evaluate_candidate_for_role,
@@ -127,72 +128,41 @@ with tab1:
             "stage": "Review Pending",
         }).execute()
 
-        if verdict == "PASS":
-            st.success(f"PASS — Score: {score:.1f}")
-        else:
-            st.error(f"FAIL — Score: {score:.1f}")
         st.success("Candidate Uploaded Successfully")
 
     st.subheader("Uploaded Candidates")
-    data = supabase.table("Candidates").select("*").order("created_at", desc=True).execute()
-    rows = data.data or []
-    if not rows:
-        st.info("No uploaded candidates yet.")
+
+    response = supabase.table("Candidates").select("*").execute()
+
+    if response.data:
+
+        df = pd.DataFrame(response.data)
+
+        # Keep only required columns
+        df = df[[
+            "name",
+            "role",
+            "verdict",
+            "stage"
+        ]]
+
+        # Rename headers nicely
+        df.columns = [
+            "Name",
+            "Role",
+            "Verdict",
+            "Stage"
+        ]
+
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True
+        )
+
     else:
-        if "pending_delete_id" not in st.session_state:
-            st.session_state["pending_delete_id"] = None
 
-        for candidate in rows:
-            col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 1, 1, 1, 1])
-
-            with col1:
-                st.write(candidate.get("name", ""))
-            with col2:
-                st.write(candidate.get("role", ""))
-            with col3:
-                st.write(candidate.get("score"))
-            with col4:
-                st.write(candidate.get("verdict"))
-            with col5:
-                st.write(candidate.get("stage", "Review Pending"))
-            with col6:
-                candidate_id = candidate.get("id")
-                if candidate_id is not None and st.button("Delete", key=f"delete_{candidate_id}"):
-                    st.session_state["pending_delete_id"] = candidate_id
-
-        pending_delete_id = st.session_state.get("pending_delete_id")
-        if pending_delete_id is not None:
-            pending_candidate = next((c for c in rows if c.get("id") == pending_delete_id), None)
-            if pending_candidate:
-                st.warning(
-                    f"Confirm delete {pending_candidate.get('name', 'candidate')}?",
-                    icon="⚠️"
-                )
-                confirm_col, cancel_col = st.columns([1, 1])
-                if confirm_col.button("Confirm Delete", key=f"confirm_{pending_delete_id}"):
-                    try:
-                        if pending_candidate.get("cv_url"):
-                            supabase.storage.from_("candidates-files").remove(
-                                [pending_candidate["cv_url"]]
-                            )
-                        if pending_candidate.get("personal_excel_url"):
-                            supabase.storage.from_("candidates-files").remove(
-                                [pending_candidate["personal_excel_url"]]
-                            )
-                    except Exception:
-                        pass
-
-                    supabase.table("Candidates").delete().eq(
-                        "id",
-                        pending_delete_id
-                    ).execute()
-                    st.session_state["pending_delete_id"] = None
-                    st.success("Candidate deleted")
-                    st.rerun()
-
-                if cancel_col.button("Cancel", key=f"cancel_{pending_delete_id}"):
-                    st.session_state["pending_delete_id"] = None
-                    st.rerun()
+        st.info("No candidates uploaded yet.")
 
 with tab2:
     st.subheader("Create New Role")

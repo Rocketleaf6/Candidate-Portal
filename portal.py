@@ -1,5 +1,6 @@
 import streamlit as st
 from supabase import create_client
+import time
 from scoring_engine import (
     calculate_numbers_from_dob,
     evaluate_candidate_for_role,
@@ -73,20 +74,18 @@ with tab1:
 
         # Upload CV
         if cv:
-            cv_path = f"resumes/{cv.name}"
+            cv_path = f"resumes/{int(time.time())}_{cv.name}"
             supabase.storage.from_("Candidates Files").upload(
-                path=cv_path,
-                file=cv.getvalue(),
-                file_options={"content-type": "application/octet-stream"}
+                cv_path,
+                cv.getvalue()
             )
 
         # Upload Excel
         if personal_excel:
-            excel_path = f"personal_excel/{personal_excel.name}"
+            excel_path = f"excel/{int(time.time())}_{personal_excel.name}"
             supabase.storage.from_("Candidates Files").upload(
-                path=excel_path,
-                file=personal_excel.getvalue(),
-                file_options={"content-type": "application/octet-stream"}
+                excel_path,
+                personal_excel.getvalue()
             )
 
         # Run numerology scoring before insert.

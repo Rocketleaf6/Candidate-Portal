@@ -75,7 +75,7 @@ with tab1:
         # Upload CV
         if cv:
             cv_path = f"resumes/{int(time.time())}_{cv.name}"
-            supabase.storage.from_("Candidates Files").upload(
+            supabase.storage.from_("candidates-files").upload(
                 cv_path,
                 cv.getvalue()
             )
@@ -83,7 +83,7 @@ with tab1:
         # Upload Excel
         if personal_excel:
             excel_path = f"excel/{int(time.time())}_{personal_excel.name}"
-            supabase.storage.from_("Candidates Files").upload(
+            supabase.storage.from_("candidates-files").upload(
                 excel_path,
                 personal_excel.getvalue()
             )
@@ -169,11 +169,11 @@ with tab1:
                 if confirm_col.button("Confirm Delete", key=f"confirm_{pending_delete_id}"):
                     try:
                         if pending_candidate.get("cv_url"):
-                            supabase.storage.from_("Candidates Files").remove(
+                            supabase.storage.from_("candidates-files").remove(
                                 [pending_candidate["cv_url"]]
                             )
                         if pending_candidate.get("personal_excel_url"):
-                            supabase.storage.from_("Candidates Files").remove(
+                            supabase.storage.from_("candidates-files").remove(
                                 [pending_candidate["personal_excel_url"]]
                             )
                     except Exception:

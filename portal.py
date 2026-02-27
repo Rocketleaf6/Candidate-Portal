@@ -75,16 +75,18 @@ with tab1:
         if cv:
             cv_path = f"resumes/{cv.name}"
             supabase.storage.from_("Candidates Files").upload(
-                cv_path,
-                cv.getvalue()
+                path=cv_path,
+                file=cv.getvalue(),
+                file_options={"content-type": "application/octet-stream"}
             )
 
         # Upload Excel
         if personal_excel:
             excel_path = f"personal_excel/{personal_excel.name}"
             supabase.storage.from_("Candidates Files").upload(
-                excel_path,
-                personal_excel.getvalue()
+                path=excel_path,
+                file=personal_excel.getvalue(),
+                file_options={"content-type": "application/octet-stream"}
             )
 
         # Run numerology scoring before insert.

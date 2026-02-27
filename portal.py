@@ -74,7 +74,7 @@ with tab1:
         # Upload CV
         if cv:
             cv_path = f"resumes/{cv.name}"
-            supabase.storage.from_("files").upload(
+            supabase.storage.from_("Candidates Files").upload(
                 cv_path,
                 cv.getvalue()
             )
@@ -82,7 +82,7 @@ with tab1:
         # Upload Excel
         if personal_excel:
             excel_path = f"personal_excel/{personal_excel.name}"
-            supabase.storage.from_("files").upload(
+            supabase.storage.from_("Candidates Files").upload(
                 excel_path,
                 personal_excel.getvalue()
             )

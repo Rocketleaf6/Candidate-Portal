@@ -207,24 +207,50 @@ with tab2:
             st.success("Role saved successfully")
 
     st.subheader("Existing Roles")
-    roles = supabase.table("roles").select("*").execute()
-    for role in roles.data or []:
-        role_id = role["id"]
-        new_name = st.text_input(
-            f"Role Name {role_id}",
-            value=role.get("role_name", ""),
-            key=f"name_{role_id}"
+    roles_response = supabase.table("roles").select("*").execute()
+
+    for role in roles_response.data or []:
+        if st.button(
+            role["role_name"],
+            key=f"edit_role_{role['id']}"
+        ):
+            st.session_state["edit_role_id"] = role["id"]
+
+    if "edit_role_id" in st.session_state:
+        role_id = st.session_state["edit_role_id"]
+        role_data = next(
+            r for r in (roles_response.data or [])
+            if r["id"] == role_id
         )
 
-        new_description = st.text_area(
-            f"Role Description {role_id}",
-            value=role.get("role_description", ""),
-            key=f"desc_{role_id}"
-        )
+        @st.dialog("Edit Role")
+        def edit_role_dialog():
+            new_name = st.text_input(
+                "Role Name",
+                value=role_data["role_name"]
+            )
 
-        if st.button(f"Update Role {role_id}", key=f"update_role_{role_id}"):
-            supabase.table("roles").update({
-                "role_name": new_name,
-                "role_description": new_description
-            }).eq("id", role_id).execute()
-            st.success("Role updated")
+            new_desc = st.text_area(
+                "Role Description",
+                value=role_data["role_description"]
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("Save"):
+                    supabase.table("roles").update({
+                        "role_name": new_name,
+                        "role_description": new_desc
+                    }).eq("id", role_id).execute()
+
+                    st.success("Role updated")
+                    del st.session_state["edit_role_id"]
+                    st.rerun()
+
+            with col2:
+                if st.button("Cancel"):
+                    del st.session_state["edit_role_id"]
+                    st.rerun()
+
+        edit_role_dialog()

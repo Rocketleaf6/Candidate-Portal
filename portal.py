@@ -6,18 +6,14 @@ from scoring_engine import (
 )
 
 
-# ============================================
-# PASTE YOUR SUPABASE DETAILS HERE
-# ============================================
+SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"].strip()
 
-SUPABASE_URL = "PASTE_URL"
+if not SUPABASE_URL.startswith("https://"):
+    st.error(f"Invalid Supabase URL: {SUPABASE_URL}")
+    st.stop()
 
-SUPABASE_KEY = "PASTE_ANON_KEY"
-
-supabase = create_client(
-    SUPABASE_URL,
-    SUPABASE_KEY
-)
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 st.title("Candidate Submission Portal")
